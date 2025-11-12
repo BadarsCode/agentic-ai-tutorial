@@ -1,45 +1,45 @@
 from dotenv import load_dotenv
-import streamlit as st 
-import sqlite3 
-import os 
+import streamlit as st
+import sqlite3
+import os
 import google.generativeai as genai
 
+# ✅ Load environment variables
 load_dotenv()
 
+# ✅ Configure Gemini API
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-
-def get_gemini_response(question,prompt):
+# ✅ Function to generate SQL query using Gemini
+def get_gemini_response(question, prompt):
     model = genai.GenerativeModel("gemini-2.5-flash")
-    response = model.generate_content([prompt[0] , question])
-    return response.text
+    response = model.generate_content([prompt, question])
+    return response.text.strip()
 
-
-# function to retrieve query from the database
+# ✅ Function to execute SQL query on SQLite database
 def read_sql_query(sql, db):
-    conn = sqlite3.connect(db)
-    cur = conn.cursor()
-    cur.execute(sql)
-    rows= cur.fetchall()
-    conn.commit()
-    conn.close()
-    for row in rows:
-        print(row)
-    return rows
+    try:
+        conn = sqlite3.connect(db)
+        cur = conn.cursor()
+        cur.execute(sql)
+        rows = cur.fetchall()
+        conn.commit()
+        conn.close()
+        return rows
+    except Exception as e:
+        return [("Error executing query:", str(e))]
 
-
-
+# ✅ Prompt for Gemini model
 prompt = """
 You are an intelligent SQL query generator.
 Your job is to convert natural language text into a valid, safe, and syntactically correct SQL query
-for the following database schema without any other text just provide the SQL Query without any explaination.
-don't write any orther textand the query must be in text form and not in code form.
+for the following database schema. Return only the SQL query (plain text, no explanation, no markdown).
 
 --------------------------------------------------
-DATABASE SCHEMA:able name: s
+DATABASE SCHEMA:
 --------------------------------------------------
 Database name: student
-Ttudents
+Table name: students
 
 Columns:
 - name (VARCHAR)
@@ -53,7 +53,7 @@ INSTRUCTIONS:
 --------------------------------------------------
 1. Understand the user request written in plain English.
 2. Generate ONLY an SQL query (no explanations, no markdown, no extra text).
-3. The query must be compatible with MySQL syntax.
+3. The query must be compatible with SQLite syntax.
 4. Always use the table 'students' from the database 'student'.
 5. Use column names exactly as given in the schema.
 6. If a column or intent is unclear, make a reasonable assumption consistent with the schema.
@@ -69,29 +69,32 @@ INSTRUCTIONS:
 If the user’s request is unrelated to database operations, respond exactly with:
 "I can only generate SQL queries for the 'students' table in the 'student' database."
 --------------------------------------------------
-
-Now, based on the user's request below, generate the SQL query only don't need any explaination or any text just the sql query for running in your database:
+Now, based on the user's request below, generate the SQL query only:
 """
 
+# ✅ Streamlit App Setup
+st.set_page_config(page_title="AI SQL Query Generator")
 
-# Streamlit App
+st.title("🤖 GEMINI APP: Your AI-Powered SQL Assistant")
+st.markdown("Ask any question in plain English, and I’ll generate and execute the SQL query for you!")
 
-# set page configuration with a title 
-st.set_page_config(page_title="SQL Query Generator App")
+question = st.text_input("Enter your question:", key='input')
 
-st.markdown(" GEMINI APP:  YOur AI-Powered SQL Assistant")
-st.markdown("Ask Any Question: And I will Generate SQL Query for you")
+if st.button("Generate and Run SQL Query"):
+    if question.strip() == "":
+        st.warning("⚠️ Please enter a query.")
+    else:
+        # Generate SQL query using Gemini
+        sql_query = get_gemini_response(question, prompt)
+        st.subheader("🧠 Generated SQL Query:")
+        st.code(sql_query, language="sql")
 
+        # Execute query on SQLite database
+        result = read_sql_query(sql_query, "student.db")
 
-question = st.text_input("Enter your query in plan English:", key='input')
-
-submit = st.button("Generate SQL Query")
-
-if submit:
-    response = get_gemini_response(question, prompt)
-    print(response)
-    response= read_sql_query(response, "student.db")
-    st.subheader(" The Response is:")
-    for row in response:
-        print(row)
-        st.subheader("row")
+        st.subheader("📊 Query Result:")
+        if len(result) == 0:
+            st.info("No records found or query executed successfully.")
+        else:
+            for row in result:
+                st.write(row)
