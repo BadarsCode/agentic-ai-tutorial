@@ -1,0 +1,5 @@
+.db
+student.db
+.env
+.env/
+env/
