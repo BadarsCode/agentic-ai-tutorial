@@ -9,9 +9,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain.chains import RetrievalQA 
+from langchain_classic.chains import RetrievalQA 
 # Optional: use OpenAI embeddings if GoogleGenerativeAIEmbeddings is not installed
-from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
